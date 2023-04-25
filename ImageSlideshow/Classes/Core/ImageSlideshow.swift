@@ -28,7 +28,7 @@ public protocol ImageSlideshowDelegate: class {
     @objc optional func imageSlideshowDidEndDecelerating(_ imageSlideshow: ImageSlideshow)
 }
 
-/** 
+/**
     Used to represent position of the Page Control
     - hidden: Page Control is hidden
     - insideScrollView: Page Control is inside image slideshow
@@ -212,7 +212,7 @@ open class ImageSlideshow: UIView {
     fileprivate var isAnimating: Bool = false
 
     /// Transitioning delegate to manage the transition to full screen controller
-    open fileprivate(set) var slideshowTransitioningDelegate: ZoomAnimatedTransitioningDelegate? // swiftlint:disable:this weak_delegate
+    open fileprivate(set) weak var slideshowTransitioningDelegate: ZoomAnimatedTransitioningDelegate?
 
     private var primaryVisiblePage: Int {
         return scrollView.frame.size.width > 0 ? Int(scrollView.contentOffset.x + scrollView.frame.size.width / 2) / Int(scrollView.frame.size.width) : 0
@@ -237,9 +237,6 @@ open class ImageSlideshow: UIView {
     fileprivate func initialize() {
         autoresizesSubviews = true
         clipsToBounds = true
-        if #available(iOS 13.0, *) {
-            backgroundColor = .systemBackground
-        }
 
         // scroll view configuration
         scrollView.frame = CGRect(x: 0, y: 0, width: frame.size.width, height: frame.size.height - 50.0)
@@ -548,6 +545,24 @@ open class ImageSlideshow: UIView {
 
         fullscreen.initialPage = currentPage
         fullscreen.inputs = images
+        slideshowTransitioningDelegate = ZoomAnimatedTransitioningDelegate(slideshowView: self, slideshowController: fullscreen)
+        fullscreen.transitioningDelegate = slideshowTransitioningDelegate
+        fullscreen.modalPresentationStyle = .custom
+        controller.present(fullscreen, animated: true, completion: completion)
+
+        return fullscreen
+    }
+    
+    @discardableResult
+    open func presentFullScreenController(from controller: UIViewController, data: [(sourceUrl: AlamofireSource?, sourceVideo: String, type: String)], completion: (() -> Void)? = nil) -> FullScreenSlideshowViewController {
+        let fullscreen = FullScreenSlideshowViewController()
+        fullscreen.pageSelected = {[weak self] (page: Int) in
+            self?.setCurrentPage(page, animated: false)
+        }
+        
+        fullscreen.initialPage = currentPage
+        fullscreen.inputs = images
+        fullscreen.inputSources = data
         slideshowTransitioningDelegate = ZoomAnimatedTransitioningDelegate(slideshowView: self, slideshowController: fullscreen)
         fullscreen.transitioningDelegate = slideshowTransitioningDelegate
         fullscreen.modalPresentationStyle = .custom
